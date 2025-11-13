@@ -1,0 +1,519 @@
+# <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>English, With Hasan Khan</title>
+  <style>
+    /* Simple white & blue classroom theme */
+    :root{
+      --blue:#2e6cf6;
+      --muted:#eef3ff;
+      --card:#ffffff;
+      --bg:#f4f8ff;
+      --text:#122;
+    }
+    *{box-sizing:border-box}
+    body{font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg);color:var(--text);margin:0;padding:0}
+    header{background:var(--blue);color:#fff;padding:22px 16px;text-align:center}
+    header h1{margin:0;font-size:26px;letter-spacing:0.2px}
+    header p{margin:6px 0 0;font-size:14px;opacity:0.95}
+    .topbar{max-width:980px;margin:12px auto;display:flex;justify-content:flex-end;padding:0 12px;gap:8px}
+    .btn{background:#fff;color:var(--blue);border:0;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600}
+    .container{max-width:980px;margin:20px auto;padding:18px;background:var(--card);border-radius:12px;box-shadow:0 6px 20px rgba(15,35,80,0.06)}
+    h2{color:var(--blue);border-bottom:3px solid var(--muted);padding-bottom:6px}
+    ul{padding-left:18px}
+    .pdf-links{background:var(--muted);padding:12px;border-radius:8px}
+    .note{display:flex;justify-content:space-between;align-items:center;padding:10px 8px;border-bottom:1px dashed #e6eefb}
+    .note a{color:var(--blue);text-decoration:none;font-weight:600}
+    footer{background:var(--blue);color:#fff;padding:12px;text-align:center;margin-top:18px;border-radius:0 0 6px 6px}
+    /* modal */
+    .modal-back{position:fixed;inset:0;background:rgba(2,6,23,0.45);display:none;align-items:center;justify-content:center;z-index:60}
+    .modal{background:#fff;padding:18px;border-radius:10px;max-width:420px;width:94%;box-shadow:0 10px 30px rgba(15,35,80,0.2)}
+    label{display:block;margin:8px 0 4px;font-size:13px}
+    input[type="text"], input[type="password"], input[type="url"]{width:100%;padding:10px;border-radius:8px;border:1px solid #e6eefb}
+    .row{display:flex;gap:8px}
+    .row .col{flex:1}
+    .small{font-size:13px;color:#666;margin-top:6px}
+    .linksmall{font-size:13px;color:var(--blue)}
+    .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+    .danger{background:#ff5c5c;color:#fff;border:0;padding:8px 10px;border-radius:8px}
+    .success{background:var(--blue);color:#fff;border:0;padding:8px 10px;border-radius:8px}
+    /* responsive */
+    @media (max-width:560px){ header h1{font-size:20px}}
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>English, With Hasan Khan</h1>
+    <p>Learn & Practice English Easily</p>
+  </header>
+
+  <div class="topbar">
+    <button id="adminBtn" class="btn">Admin (Rahul)</button>
+  </div>
+
+  <main class="container" id="main">
+    <section>
+      <h2>Changing Sentences</h2>
+      <p><strong>Rules:</strong></p>
+      <ul>
+        <li>Identify the tense first, then change auxiliary verbs as needed.</li>
+        <li>Affirmative → Negative: add <em>not</em> or use negative forms.</li>
+        <li>Assertive → Interrogative: move auxiliary before the subject.</li>
+        <li>Keep subject–verb agreement correct.</li>
+      </ul>
+      <p><strong>Example:</strong><br>
+      He is honest → Is he honest?<br>She was dancing → Was she dancing?</p>
+    </section>
+
+    <section style="margin-top:18px">
+      <h2>Tag Questions</h2>
+      <p><strong>Rules:</strong></p>
+      <ul>
+        <li>Use the helping verb + subject pronoun as the tag.</li>
+        <li>Positive sentence → negative tag; Negative sentence → positive tag.</li>
+      </ul>
+      <p><strong>Example:</strong><br>
+      He is a student, isn’t he?<br>They don’t play football, do they?</p>
+    </section>
+
+    <section style="margin-top:18px">
+      <h2>Notes (PDF Downloads)</h2>
+      <div class="pdf-links" id="pdfArea">
+        <p>📘 Click a link to open/download a PDF:</p>
+        <div id="notesList">
+          <!-- notes inserted here -->
+        </div>
+        <p class="small">Add Google Drive share links using Admin (Rahul).</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>Created by Rahul</footer>
+
+  <!-- Modal: login / admin panel -->
+  <div id="modal" class="modal-back" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div id="modalContent">
+        <!-- dynamic content goes here -->
+      </div>
+    </div>
+  </div>
+
+<script>
+/*
+  Simple client-side admin panel.
+  - Admin username: Rahul (display only)
+  - Default admin password: 'rahul123'  <-- CHANGE this in the code after upload
+  - Notes stored in localStorage under key 'ewhk_notes' (keeps them on this browser)
+  - No server, no Firebase.
+*/
+
+// ---- CONFIG ----
+const ADMIN_PASSWORD = 'rahul123'; // change this BEFORE sharing publicly
+const ADMIN_NAME = 'Rahul';
+
+// ---- UI helpers ----
+const modal = document.getElementById('modal');
+const modalContent = document.getElementById('modalContent');
+const adminBtn = document.getElementById('adminBtn');
+const notesListEl = document.getElementById('notesList');
+
+function showModal(html){
+  modalContent.innerHTML = html;
+  modal.style.display = 'flex';
+  modal.setAttribute('aria-hidden', 'false');
+}
+function closeModal(){ modal.style.display = 'none'; modal.setAttribute('aria-hidden','true'); }
+
+// ---- Storage helpers ----
+function loadNotes(){
+  try{
+    const raw = localStorage.getItem('ewhk_notes') || '[]';
+    return JSON.parse(raw);
+  }catch(e){ return []; }
+}
+function saveNotes(notes){ localStorage.setItem('ewhk_notes', JSON.stringify(notes)); }
+function renderNotes(){
+  const notes = loadNotes();
+  if(!notes.length){
+    notesListEl.innerHTML = '<p class="small">No notes yet.</p>';
+    return;
+  }
+  notesListEl.innerHTML = notes.map(n => `
+    <div class="note">
+      <div>
+        <div style="font-weight:700">${escapeHtml(n.title)}</div>
+        <div class="small">Added: ${new Date(n.time).toLocaleString()}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <a class="linksmall" href="${escapeAttr(n.link)}" target="_blank" rel="noopener">Open</a>
+        <button onclick="deleteNote('${n.id}')" style="background:#ff7b7b;border:0;padding:6px 8px;border-radius:6px;color:white;cursor:pointer">Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// small helpers
+function uid(){ return 'id-' + Math.random().toString(36).slice(2,9); }
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ return (s||'').replace(/"/g, '&quot;'); }
+
+// ---- admin actions ----
+function openLogin(){
+  showModal(`
+    <h3 style="margin:0 0 8px">Admin (Rahul) — Login</h3>
+    <p class="small">Enter admin password to manage notes.</p>
+    <label>Password</label>
+    <input id="passInput" type="password" placeholder="Password" />
+    <div class="actions">
+      <button class="btn danger" onclick="closeModal()">Cancel</button>
+      <button class="btn success" onclick="tryLogin()">Login</button>
+    </div>
+    <p class="small" style="margin-top:8px">Hint: change the default password in the file before sharing.</p>
+  `);
+  setTimeout(()=>document.getElementById('passInput').focus(),50);
+}
+function tryLogin(){
+  const v = document.getElementById('passInput').value || '';
+  if(v === ADMIN_PASSWORD){
+    showAdminPanel();
+  } else {
+    alert('Incorrect password');
+  }
+}
+
+function showAdminPanel(){
+  // admin HTML: add note form + list + logout
+  showModal(`
+    <h3 style="margin:0 0 8px">Admin Panel — ${ADMIN_NAME}</h3>
+    <div class="small">Add a PDF (Google Drive share link recommended)</div>
+    <label style="margin-top:10px">Title</label>
+    <input id="noteTitle" type="text" placeholder="e.g., Changing Sentences Notes" />
+    <label>Google Drive link (shareable)</label>
+    <input id="noteLink" type="url" placeholder="https://drive.google.com/..." />
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn success" onclick="addNote()">Add Note</button>
+      <button class="btn danger" onclick="closeModal()">Close</button>
+    </div>
+    <div style="margin-top:14px"><strong>Existing notes</strong></div>
+    <div id="adminNotesList" style="margin-top:8px"></div>
+    <div class="small" style="margin-top:8px">Notes saved locally in your browser. They remain on this browser until you clear storage.</div>
+  `);
+  renderAdminNotes();
+}
+
+function renderAdminNotes(){
+  const el = document.getElementById('adminNotesList');
+  const notes = loadNotes();
+  if(!notes.length){
+    el.innerHTML = '<p class="small">No notes added yet.</p>';
+    return;
+  }
+  el.innerHTML = notes.map(n => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed #eef6ff">
+      <div style="max-width:68%"><strong>${escapeHtml(n.title)}</strong><div class="small">${escapeHtml(n.link)}</div></div>
+      <div style="display:flex;gap:6px">
+        <a class="linksmall" href="${escapeAttr(n.link)}" target="_blank">Open</a>
+        <button onclick="deleteNote('${n.id}')" style="background:#ff7b7b;border:0;padding:6px 8px;border-radius:6px;color:white;cursor:pointer">Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function addNote(){
+  const title = (document.getElementById('noteTitle').value || '').trim();
+  const link = (document.getElementById('noteLink').value || '').trim();
+  if(!title || !link){ alert('Please provide title and link'); return; }
+  const notes = loadNotes();
+  const item = { id: uid(), title, link, time: Date.now() };
+  notes.unshift(item);
+  saveNotes(notes);
+  renderNotes();
+  // refresh admin list
+  renderAdminNotes();
+  // clear inputs
+  document.getElementById('noteTitle').value = '';
+  document.getElementById('noteLink').value = '';
+  alert('Note added');
+}
+
+function deleteNote(id){
+  if(!confirm('Delete this note?')) return;
+  let notes = loadNotes();
+  notes = notes.filter(n => n.id !== id);
+  saveNotes(notes);
+  renderNotes();
+  if(document.getElementById('adminNotesList')) renderAdminNotes();
+}
+
+// wire events
+adminBtn.addEventListener('click', openLogin);
+modal.addEventListener('click', (e)=>{ if(e.target === modal) closeModal(); });
+
+// initial render
+renderNotes();
+</script>
+</body>
+  </html><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>English, With Hasan Khan</title>
+  <style>
+    /* Simple white & blue classroom theme */
+    :root{
+      --blue:#2e6cf6;
+      --muted:#eef3ff;
+      --card:#ffffff;
+      --bg:#f4f8ff;
+      --text:#122;
+    }
+    *{box-sizing:border-box}
+    body{font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg);color:var(--text);margin:0;padding:0}
+    header{background:var(--blue);color:#fff;padding:22px 16px;text-align:center}
+    header h1{margin:0;font-size:26px;letter-spacing:0.2px}
+    header p{margin:6px 0 0;font-size:14px;opacity:0.95}
+    .topbar{max-width:980px;margin:12px auto;display:flex;justify-content:flex-end;padding:0 12px;gap:8px}
+    .btn{background:#fff;color:var(--blue);border:0;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600}
+    .container{max-width:980px;margin:20px auto;padding:18px;background:var(--card);border-radius:12px;box-shadow:0 6px 20px rgba(15,35,80,0.06)}
+    h2{color:var(--blue);border-bottom:3px solid var(--muted);padding-bottom:6px}
+    ul{padding-left:18px}
+    .pdf-links{background:var(--muted);padding:12px;border-radius:8px}
+    .note{display:flex;justify-content:space-between;align-items:center;padding:10px 8px;border-bottom:1px dashed #e6eefb}
+    .note a{color:var(--blue);text-decoration:none;font-weight:600}
+    footer{background:var(--blue);color:#fff;padding:12px;text-align:center;margin-top:18px;border-radius:0 0 6px 6px}
+    /* modal */
+    .modal-back{position:fixed;inset:0;background:rgba(2,6,23,0.45);display:none;align-items:center;justify-content:center;z-index:60}
+    .modal{background:#fff;padding:18px;border-radius:10px;max-width:420px;width:94%;box-shadow:0 10px 30px rgba(15,35,80,0.2)}
+    label{display:block;margin:8px 0 4px;font-size:13px}
+    input[type="text"], input[type="password"], input[type="url"]{width:100%;padding:10px;border-radius:8px;border:1px solid #e6eefb}
+    .row{display:flex;gap:8px}
+    .row .col{flex:1}
+    .small{font-size:13px;color:#666;margin-top:6px}
+    .linksmall{font-size:13px;color:var(--blue)}
+    .actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+    .danger{background:#ff5c5c;color:#fff;border:0;padding:8px 10px;border-radius:8px}
+    .success{background:var(--blue);color:#fff;border:0;padding:8px 10px;border-radius:8px}
+    /* responsive */
+    @media (max-width:560px){ header h1{font-size:20px}}
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>English, With Hasan Khan</h1>
+    <p>Learn & Practice English Easily</p>
+  </header>
+
+  <div class="topbar">
+    <button id="adminBtn" class="btn">Admin (Rahul)</button>
+  </div>
+
+  <main class="container" id="main">
+    <section>
+      <h2>Changing Sentences</h2>
+      <p><strong>Rules:</strong></p>
+      <ul>
+        <li>Identify the tense first, then change auxiliary verbs as needed.</li>
+        <li>Affirmative → Negative: add <em>not</em> or use negative forms.</li>
+        <li>Assertive → Interrogative: move auxiliary before the subject.</li>
+        <li>Keep subject–verb agreement correct.</li>
+      </ul>
+      <p><strong>Example:</strong><br>
+      He is honest → Is he honest?<br>She was dancing → Was she dancing?</p>
+    </section>
+
+    <section style="margin-top:18px">
+      <h2>Tag Questions</h2>
+      <p><strong>Rules:</strong></p>
+      <ul>
+        <li>Use the helping verb + subject pronoun as the tag.</li>
+        <li>Positive sentence → negative tag; Negative sentence → positive tag.</li>
+      </ul>
+      <p><strong>Example:</strong><br>
+      He is a student, isn’t he?<br>They don’t play football, do they?</p>
+    </section>
+
+    <section style="margin-top:18px">
+      <h2>Notes (PDF Downloads)</h2>
+      <div class="pdf-links" id="pdfArea">
+        <p>📘 Click a link to open/download a PDF:</p>
+        <div id="notesList">
+          <!-- notes inserted here -->
+        </div>
+        <p class="small">Add Google Drive share links using Admin (Rahul).</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>Created by Rahul</footer>
+
+  <!-- Modal: login / admin panel -->
+  <div id="modal" class="modal-back" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true">
+      <div id="modalContent">
+        <!-- dynamic content goes here -->
+      </div>
+    </div>
+  </div>
+
+<script>
+/*
+  Simple client-side admin panel.
+  - Admin username: Rahul (display only)
+  - Default admin password: 'rahul123'  <-- CHANGE this in the code after upload
+  - Notes stored in localStorage under key 'ewhk_notes' (keeps them on this browser)
+  - No server, no Firebase.
+*/
+
+// ---- CONFIG ----
+const ADMIN_PASSWORD = 'rahul123'; // change this BEFORE sharing publicly
+const ADMIN_NAME = 'Rahul';
+
+// ---- UI helpers ----
+const modal = document.getElementById('modal');
+const modalContent = document.getElementById('modalContent');
+const adminBtn = document.getElementById('adminBtn');
+const notesListEl = document.getElementById('notesList');
+
+function showModal(html){
+  modalContent.innerHTML = html;
+  modal.style.display = 'flex';
+  modal.setAttribute('aria-hidden', 'false');
+}
+function closeModal(){ modal.style.display = 'none'; modal.setAttribute('aria-hidden','true'); }
+
+// ---- Storage helpers ----
+function loadNotes(){
+  try{
+    const raw = localStorage.getItem('ewhk_notes') || '[]';
+    return JSON.parse(raw);
+  }catch(e){ return []; }
+}
+function saveNotes(notes){ localStorage.setItem('ewhk_notes', JSON.stringify(notes)); }
+function renderNotes(){
+  const notes = loadNotes();
+  if(!notes.length){
+    notesListEl.innerHTML = '<p class="small">No notes yet.</p>';
+    return;
+  }
+  notesListEl.innerHTML = notes.map(n => `
+    <div class="note">
+      <div>
+        <div style="font-weight:700">${escapeHtml(n.title)}</div>
+        <div class="small">Added: ${new Date(n.time).toLocaleString()}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <a class="linksmall" href="${escapeAttr(n.link)}" target="_blank" rel="noopener">Open</a>
+        <button onclick="deleteNote('${n.id}')" style="background:#ff7b7b;border:0;padding:6px 8px;border-radius:6px;color:white;cursor:pointer">Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// small helpers
+function uid(){ return 'id-' + Math.random().toString(36).slice(2,9); }
+function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ return (s||'').replace(/"/g, '&quot;'); }
+
+// ---- admin actions ----
+function openLogin(){
+  showModal(`
+    <h3 style="margin:0 0 8px">Admin (Rahul) — Login</h3>
+    <p class="small">Enter admin password to manage notes.</p>
+    <label>Password</label>
+    <input id="passInput" type="password" placeholder="Password" />
+    <div class="actions">
+      <button class="btn danger" onclick="closeModal()">Cancel</button>
+      <button class="btn success" onclick="tryLogin()">Login</button>
+    </div>
+    <p class="small" style="margin-top:8px">Hint: change the default password in the file before sharing.</p>
+  `);
+  setTimeout(()=>document.getElementById('passInput').focus(),50);
+}
+function tryLogin(){
+  const v = document.getElementById('passInput').value || '';
+  if(v === ADMIN_PASSWORD){
+    showAdminPanel();
+  } else {
+    alert('Incorrect password');
+  }
+}
+
+function showAdminPanel(){
+  // admin HTML: add note form + list + logout
+  showModal(`
+    <h3 style="margin:0 0 8px">Admin Panel — ${ADMIN_NAME}</h3>
+    <div class="small">Add a PDF (Google Drive share link recommended)</div>
+    <label style="margin-top:10px">Title</label>
+    <input id="noteTitle" type="text" placeholder="e.g., Changing Sentences Notes" />
+    <label>Google Drive link (shareable)</label>
+    <input id="noteLink" type="url" placeholder="https://drive.google.com/..." />
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn success" onclick="addNote()">Add Note</button>
+      <button class="btn danger" onclick="closeModal()">Close</button>
+    </div>
+    <div style="margin-top:14px"><strong>Existing notes</strong></div>
+    <div id="adminNotesList" style="margin-top:8px"></div>
+    <div class="small" style="margin-top:8px">Notes saved locally in your browser. They remain on this browser until you clear storage.</div>
+  `);
+  renderAdminNotes();
+}
+
+function renderAdminNotes(){
+  const el = document.getElementById('adminNotesList');
+  const notes = loadNotes();
+  if(!notes.length){
+    el.innerHTML = '<p class="small">No notes added yet.</p>';
+    return;
+  }
+  el.innerHTML = notes.map(n => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed #eef6ff">
+      <div style="max-width:68%"><strong>${escapeHtml(n.title)}</strong><div class="small">${escapeHtml(n.link)}</div></div>
+      <div style="display:flex;gap:6px">
+        <a class="linksmall" href="${escapeAttr(n.link)}" target="_blank">Open</a>
+        <button onclick="deleteNote('${n.id}')" style="background:#ff7b7b;border:0;padding:6px 8px;border-radius:6px;color:white;cursor:pointer">Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function addNote(){
+  const title = (document.getElementById('noteTitle').value || '').trim();
+  const link = (document.getElementById('noteLink').value || '').trim();
+  if(!title || !link){ alert('Please provide title and link'); return; }
+  const notes = loadNotes();
+  const item = { id: uid(), title, link, time: Date.now() };
+  notes.unshift(item);
+  saveNotes(notes);
+  renderNotes();
+  // refresh admin list
+  renderAdminNotes();
+  // clear inputs
+  document.getElementById('noteTitle').value = '';
+  document.getElementById('noteLink').value = '';
+  alert('Note added');
+}
+
+function deleteNote(id){
+  if(!confirm('Delete this note?')) return;
+  let notes = loadNotes();
+  notes = notes.filter(n => n.id !== id);
+  saveNotes(notes);
+  renderNotes();
+  if(document.getElementById('adminNotesList')) renderAdminNotes();
+}
+
+// wire events
+adminBtn.addEventListener('click', openLogin);
+modal.addEventListener('click', (e)=>{ if(e.target === modal) closeModal(); });
+
+// initial render
+renderNotes();
+</script>
+</body>
+      </html>English-with-Hasan-khan
